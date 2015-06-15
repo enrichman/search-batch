@@ -13,7 +13,7 @@ public enum SafeCheck {
     
     INSTANCE;
 
-    private static final int KEY_THRESHOLD = 10;
+    private static final int KEY_THRESHOLD = 5;
     private Set<String> keywordSet;
 
     SafeCheck() {
