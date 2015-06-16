@@ -1,10 +1,9 @@
+import it.enricocandino.extractor.indexer.Solr;
 import it.enricocandino.extractor.model.Response;
 import it.enricocandino.extractor.reader.ClueWebReader;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Queue;
+import java.io.FileInputStream;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -14,76 +13,63 @@ import java.util.concurrent.Executors;
  */
 public class Extractor {
 
-    private static final String BASE_FOLDER = "/Users/enrico/Documents/warc/";
-
     public static void main(String[] args) {
+
+        if(args.length == 0) {
+            System.out.print("ERROR: missing arguments with the warc paths");
+            return;
+        }
+
+        try {
+            Properties props = new Properties();
+            props.load(new FileInputStream("config.properties"));
+            String solrHost = props.getProperty("solr.host");
+            Solr.Client.init(solrHost);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error loading properties: exit!");
+            return;
+        }
+
         System.out.println("start: "+new Date());
-
-
 
         long startBatch = System.currentTimeMillis();
         long start = System.currentTimeMillis();
 
+        Queue<Response> queue = new ConcurrentLinkedQueue<Response>();
+        ExecutorService producer = Executors.newFixedThreadPool(30);
+        ExecutorService consumer = Executors.newFixedThreadPool(20);
+        ClueWebReader reader = new ClueWebReader(producer, consumer, queue);
+
         try {
-
-            for (int i = 9; i < 10; i++) {
-
-                String path = BASE_FOLDER + "0" + i + ".warc.gz";
-
+            for (String path : args) {
                 System.out.println("Start reading from: "+path);
-                //List<Response> responses = reader.read(path);
 
-                Queue<Response> queue = new ConcurrentLinkedQueue<Response>();
-                ExecutorService producer = Executors.newFixedThreadPool(12);
-                ExecutorService consumer = Executors.newFixedThreadPool(8);
-
-                ClueWebReader reader = new ClueWebReader(producer, consumer, queue);
                 reader.read(path);
-
-                producer.shutdown();
-                consumer.shutdown();
-
-                while (!producer.isTerminated()) {}
-                System.out.println("Producers["+i+"] ended!");
-
-                while (!consumer.isTerminated()) {}
-                System.out.println("Consumers["+i+"] ended!");
-
-                /*
-                for (Response response : responses) {
-                    Thread worker = new SolrThread(response);
-                    executor.execute(worker);
-                }
-                */
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        producer.shutdown();
+        consumer.shutdown();
+
+        while (!producer.isTerminated()) {}
+        System.out.println("Producers ended!");
+
+        while (!consumer.isTerminated()) {}
+        System.out.println("Consumers ended!");
+
+
         long startCommit = System.currentTimeMillis();
         //SolrIndexer.commit();
-
         System.out.println("Finish commit in " + (System.currentTimeMillis() - startCommit));
 
         System.out.println("Finish indexing in " + (System.currentTimeMillis() - start));
         System.out.println("Finish batch in " + (System.currentTimeMillis() - startBatch));
-
         System.out.println("** Completed! **");
-
         System.out.println("end: "+new Date());
-    }
-
-    // chops a list into non-view sublists of length L
-    static <T> List<List<T>> chopped(List<T> list, final int L) {
-        List<List<T>> parts = new ArrayList<List<T>>();
-        final int N = list.size();
-        for (int i = 0; i < N; i += L) {
-            parts.add(new ArrayList<T>(
-                            list.subList(i, Math.min(N, i + L)))
-            );
-        }
-        return parts;
     }
 
 }

@@ -17,8 +17,9 @@ public enum Solr {
 
 	private SolrClient solrClient;
 
-	Solr() {
-		this.solrClient = new HttpSolrClient("http://localhost:8983/solr/warc_core");
+	public void init(String solrPath) {
+		if(this.solrClient == null)
+			this.solrClient = new HttpSolrClient(solrPath);
 	}
 
 	public void index(List<Response> responses) {

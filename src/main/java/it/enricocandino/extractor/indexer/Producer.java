@@ -15,6 +15,17 @@ import java.util.Scanner;
  */
 public class Producer implements Runnable {
 
+    private enum Log {
+        me;
+        private int count;
+
+        public void done() {
+            count++;
+            if(count % 100 == 0)
+                System.out.println("Done ["+count+"]");
+        }
+    }
+
     private WarcRecord warcRecord;
     private Queue<Response> queue;
 
@@ -80,5 +91,7 @@ public class Producer implements Runnable {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        Log.me.done();
     }
 }
